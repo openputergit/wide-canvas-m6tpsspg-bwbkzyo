@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Leads Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .notification {
+            animation: slideIn 0.5s ease-out;
+            z-index: 1000;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+        }
+        .modal-overlay {
+            backdrop-filter: blur(4px);
+        }
+        .chip {
+            transition: all 0.3s ease;
+        }
+        .chip:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="max-w-md mx-auto bg-white min-h-screen shadow-lg">
+        <!-- Header -->
+        <header class="bg-blue-600 text-white p-4">
+            <h1 class="text-xl font-bold">Sales Lead Tracker</h1>
+            <div class="mt-4 relative">
+                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="searchInput" placeholder="Search leads..." 
+                    class="w-full pl-10 pr-4 py-2 rounded-lg text-gray-800">
+            </div>
+        </header>
+
+        <!-- Filter Section -->
+        <div class="p-4">
+            <div class="flex gap-2 overflow-x-auto mb-2">
+                <button class="chip px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm whitespace-nowrap" data-filter="all">All Leads</button>
+                <button class="chip px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm whitespace-nowrap" data-filter="new">New</button>
+                <button class="chip px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm whitespace-nowrap" data-filter="inProgress">In Progress</button>
+                <button class="chip px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm whitespace-nowrap" data-filter="converted">Converted</button>
+                <button class="chip px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm whitespace-nowrap" data-filter="lost">Lost</button>
+            </div>
+            <div class="flex gap-2 overflow-x-auto">
+                <button class="chip px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm whitespace-nowrap" data-temp="hot">Hot</button>
+                <button class="chip px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm whitespace-nowrap" data-temp="warm">Warm</button>
+                <button class="chip px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm whitespace-nowrap" data-temp="cold">Cold</button>
+            </div>
+        </div>
+
+        <!-- Leads List -->
+        <div id="leadsList" class="divide-y"></div>
+
+        <!-- Add Lead Button -->
+        <button id="addLeadBtn" class="fixed bottom-6 right-6 bg-blue-600 text-white rounded-full p-4 shadow-lg hover:bg-blue-700 transition-colors">
+            <i class="bi bi-plus text-2xl"></i>
+        </button>
+
+        <!-- Add/Edit Lead Modal -->
+        <div id="leadModal" class="fixed inset-0 bg-black bg-opacity-50 modal-overlay hidden z-50">
+            <div class="bg-white rounded-lg max-w-md mx-auto mt-20 p-4 m-4">
+                <h2 id="modalTitle" class="text-xl font-bold mb-4">Add New Lead</h2>
+                <form id="leadForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Name</label>
+                        <input type="text" id="leadName" required class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Email</label>
+                        <input type="email" id="leadEmail" required class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Phone</label>
+                        <input type="tel" id="leadPhone" required class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Status</label>
+                            <select id="leadStatus" required class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500">
+                                <option value="new">New</option>
+                                <option value="inProgress">In Progress</option>
+                                <option value="converted">Converted</option>
+                                <option value="lost">Lost</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Temperature</label>
+                            <select id="leadTemperature" required class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500">
+                                <option value="hot">Hot</option>
+                                <option value="warm">Warm</option>
+                                <option value="cold">Cold</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Follow-up Date</label>
+                        <input type="datetime-local" id="followUpDate" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Notes</label>
+                        <textarea id="leadNotes" rows="3" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" id="cancelBtn" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize leads from localStorage or empty array
+        let leads = JSON.parse(localStorage.getItem('leads') || '[]');
+        const userId = localStorage.getItem('userId') || `user-${Date.now()}`;
+        localStorage.setItem('userId', userId);
+
+        // DOM Elements
+        const leadsList = document.getElementById('leadsList');
+        const leadModal = document.getElementById('leadModal');
+        const leadForm = document.getElementById('leadForm');
+        const addLeadBtn = document.getElementById('addLeadBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const searchInput = document.getElementById('searchInput');
+        let editingLeadId = null;
+        let currentFilter = 'all';
+        let currentTemp = null;
+
+        // Notification System
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification fixed top-4 right-4 px-4 py-2 rounded shadow-lg ${
+                type === 'success' ? 'bg-green-600' : 'bg-red-600'
+            } text-white`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        // Schedule Notification
+        function scheduleNotification(followUpDate, leadName) {
+            const now = new Date().getTime();
+            const scheduleTime = new Date(followUpDate).getTime();
+            
+            if (scheduleTime > now) {
+                setTimeout(() => {
+                    if (!("Notification" in window)) {
+                        alert(`Follow up reminder for ${leadName}`);
+                    } else if (Notification.permission === "granted") {
+                        new Notification(`Follow up reminder for ${leadName}`);
+                    } else if (Notification.permission !== "denied") {
+                        Notification.requestPermission().then(permission => {
+                            if (permission === "granted") {
+                                new Notification(`Follow up reminder for ${leadName}`);
+                            }
+                        });
+                    }
+                }, scheduleTime - now);
+            }
+        }
+
+        // Render Leads
+        function renderLeads(leadsToRender = leads) {
+            leadsList.innerHTML = leadsToRender.map(lead => `
+                <div class="p-4 hover:bg-gray-50">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="font-semibold">${lead.name}</h3>
+                            <p class="text-sm text-gray-600">${lead.email}</p>
+                            <p class="text-sm text-gray-600">${lead.phone}</p>
+                            <div class="flex gap-2 mt-2">
+                                <span class="inline-block px-2 py-1 text-xs rounded-full 
+                                    ${getStatusStyle(lead.status)}">
+                                    ${lead.status}
+                                </span>
+                                <span class="inline-block px-2 py-1 text-xs rounded-full 
+                                    ${getTemperatureStyle(lead.temperature)}">
+                                    ${lead.temperature}
+                                </span>
+                            </div>
+                            ${lead.followUpDate ? `
+                                <p class="text-sm text-gray-600 mt-2">
+                                    <i class="bi bi-calendar"></i> 
+                                    Follow-up: ${new Date(lead.followUpDate).toLocaleString()}
+                                </p>
+                            ` : ''}
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="editLead('${lead.id}')" class="text-gray-600 hover:text-blue-600">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button onclick="deleteLead('${lead.id}')" class="text-gray-600 hover:text-red-600">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    ${lead.notes ? `<p class="mt-2 text-sm text-gray-600">${lead.notes}</p>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function getStatusStyle(status) {
+            const styles = {
+                new: 'bg-purple-100 text-purple-800',
+                inProgress: 'bg-yellow-100 text-yellow-800',
+                converted: 'bg-green-100 text-green-800',
+                lost: 'bg-red-100 text-red-800'
+            };
+            return styles[status] || 'bg-gray-100 text-gray-800';
+        }
+
+        function getTemperatureStyle(temp) {
+            const styles = {
+                hot: 'bg-red-100 text-red-800',
+                warm: 'bg-yellow-100 text-yellow-800',
+                cold: 'bg-blue-100 text-blue-800'
+            };
+            return styles[temp] || 'bg-gray-100 text-gray-800';
+        }
+
+        // Save Lead
+        async function saveLead(e) {
+            e.preventDefault();
+            const leadData = {
+                id: editingLeadId || `lead-${Date.now()}`,
+                name: document.getElementById('leadName').value,
+                email: document.getElementById('leadEmail').value,
+                phone: document.getElementById('leadPhone').value,
+                status: document.getElementById('leadStatus').value,
+                temperature: document.getElementById('leadTemperature').value,
+                followUpDate: document.getElementById('followUpDate').value,
+                notes: document.getElementById('leadNotes').value
+            };
+
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/db', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer yGSyMN46caQEFktCKBAGh91WJLi2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: userId,
+                        appSlug: 'leads-tracker',
+                        action: editingLeadId ? 'update' : 'create',
+                        table: 'leads',
+                        id: leadData.id,
+                        data: leadData
+                    })
+                });
+
+                const result = await response.json();
+                if (!result.error) {
+                    if (editingLeadId) {
+                        leads = leads.map(lead => lead.id === editingLeadId ? leadData : lead);
+                        showNotification('Lead updated successfully');
+                    } else {
+                        leads.push(leadData);
+                        showNotification('New lead added successfully');
+                    }
+
+                    if (leadData.followUpDate) {
+                        scheduleNotification(leadData.followUpDate, leadData.name);
+                    }
+
+                    localStorage.setItem('leads', JSON.stringify(leads));
+                    renderLeads();
+                    closeModal();
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Error saving lead', 'error');
+            }
+        }
+
+        // Edit Lead
+        function editLead(id) {
+            const lead = leads.find(l => l.id === id);
+            if (lead) {
+                editingLeadId = id;
+                document.getElementById('modalTitle').textContent = 'Edit Lead';
+                document.getElementById('leadName').value = lead.name;
+                document.getElementById('leadEmail').value = lead.email;
+                document.getElementById('leadPhone').value = lead.phone;
+                document.getElementById('leadStatus').value = lead.status;
+                document.getElementById('leadTemperature').value = lead.temperature;
+                document.getElementById('followUpDate').value = lead.followUpDate || '';
+                document.getElementById('leadNotes').value = lead.notes;
+                leadModal.classList.remove('hidden');
+            }
+        }
+
+        // Delete Lead
+        async function deleteLead(id) {
+            if (confirm('Are you sure you want to delete this lead?')) {
+                try {
+                    const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/db', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer yGSyMN46caQEFktCKBAGh91WJLi2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            userId: userId,
+                            appSlug: 'leads-tracker',
+                            action: 'delete',
+                            table: 'leads',
+                            id: id
+                        })
+                    });
+
+                    const result = await response.json();
+                    if (!result.error) {
+                        leads = leads.filter(lead => lead.id !== id);
+                        localStorage.setItem('leads', JSON.stringify(leads));
+                        renderLeads();
+                        showNotification('Lead deleted successfully');
+                    } else {
+                        showNotification(result.error, 'error');
+                    }
+                } catch (error) {
+                    showNotification('Error deleting lead', 'error');
+                }
+            }
+        }
+
+        function closeModal() {
+            leadModal.classList.add('hidden');
+            leadForm.reset();
+            editingLeadId = null;
+            document.getElementById('modalTitle').textContent = 'Add New Lead';
+        }
+
+        // Search and Filter
+        function filterLeads() {
+            let filtered = [...leads];
+            
+            if (currentFilter !== 'all') {
+                filtered = filtered.filter(lead => lead.status === currentFilter);
+            }
+            
+            if (currentTemp) {
+                filtered = filtered.filter(lead => lead.temperature === currentTemp);
+            }
+            
+            const searchTerm = searchInput.value.toLowerCase();
+            if (searchTerm) {
+                filtered = filtered.filter(lead => 
+                    lead.name.toLowerCase().includes(searchTerm) ||
+                    lead.email.toLowerCase().includes(searchTerm) ||
+                    lead.phone.toLowerCase().includes(searchTerm) ||
+                    lead.notes.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            renderLeads(filtered);
+        }
+
+        // Event Listeners
+        document.querySelectorAll('[data-filter]').forEach(button => {
+            button.addEventListener('click', (e) => {
+                document.querySelectorAll('[data-filter]').forEach(btn => 
+                    btn.classList.replace('bg-blue-100', 'bg-gray-100'));
+                e.target.classList.replace('bg-gray-100', 'bg-blue-100');
+                currentFilter = e.target.dataset.filter;
+                filterLeads();
+            });
+        });
+
+        document.querySelectorAll('[data-temp]').forEach(button => {
+            button.addEventListener('click', (e) => {
+                document.querySelectorAll('[data-temp]').forEach(btn => 
+                    btn.classList.remove('ring-2', 'ring-blue-500'));
+                if (currentTemp === e.target.dataset.temp) {
+                    currentTemp = null;
+                    e.target.classList.remove('ring-2', 'ring-blue-500');
+                } else {
+                    currentTemp = e.target.dataset.temp;
+                    e.target.classList.add('ring-2', 'ring-blue-500');
+                }
+                filterLeads();
+            });
+        });
+
+        searchInput.addEventListener('input', filterLeads);
+        addLeadBtn.addEventListener('click', () => leadModal.classList.remove('hidden'));
+        cancelBtn.addEventListener('click', closeModal);
+        leadForm.addEventListener('submit', saveLead);
+
+        // Request notification permission
+        if ("Notification" in window) {
+            Notification.requestPermission();
+        }
+
+        // Initial render
+        renderLeads();
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
